@@ -47,7 +47,7 @@ class Device(PrologixGPIB):
 
     def set_CurrentRange(self, value):
         """Set the current range in ampers"""
-       self.send_instr(f':SOUR:CURR:RANG {value}')
+        self.send_instr(f':SOUR:CURR:RANG {value}')
 
     def set_current(self, value):
         """Set the current value in ampers"""
@@ -55,7 +55,7 @@ class Device(PrologixGPIB):
 
     def set_VoltageCompliance(self, value):
         """Maximum voltage limit that the instrument will allow"""
-       self.send_instr(f':SENS:VOLT:PROT {value}')
+        self.send_instr(f':SENS:VOLT:PROT {value}')
 
 
     def set_VoltageSense(self):
