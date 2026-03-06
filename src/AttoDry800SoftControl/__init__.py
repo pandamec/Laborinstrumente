@@ -1,0 +1,2 @@
+from .SoftControl import Device
+
