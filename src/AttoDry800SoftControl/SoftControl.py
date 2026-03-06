@@ -1,7 +1,7 @@
 class attoDryControl:
     """Indirect control of the AttoDry800 during heating and cooling down, for sample and cold plate."""
 
-    def __init__(self, Atto, ControlMode,):
+    def __init__(self, Atto, ControlMode):
 
         self.Atto= Atto                     # Class provided by Attocube
         self.ControlMode=ControlMode        #1 Sample Plate #2 Sample Plate and Cold Plate
@@ -55,16 +55,6 @@ class attoDryControl:
 
         return dTds
 
-    def startControl(self,T, T_target):
-        """Start the temperature control"""
-
-        Atto.sample.startTempControl()
-        Atto.sample.setSetPoint(T)
-
-        if self.ControlMode == 2:
-            Atto.exchange.setSetPoint(T - computeColdplateTemperature(T))  # Previously coldplate directly -20 wrt the set temperature. this created an oscillation on the sample temperature value after 10min
-            Atto.exchange.startTempControl()
-
     def stopControl(self):
         """Stop the temperature control"""
         Atto.sample.stopTempControl()
@@ -87,29 +77,28 @@ class attoDryControl:
             Atto.exchange.startTempControl()
 
 
-    def performApproachHeating(self, T_target):
-
+    def performApproachHeating(self, T_targetSample):
+        """Perform an approach during heating. After testing, a constant value at sample plate includes also a constant value at cold plate"""
         while n_dTds < 10:
 
-            startControl( T_target)
+            startControl(T_targetSample)
             dTds = getcoolingrate(2)
             Ts = Atto.sample.getTemperature()
             Delta = T_targetSample - Ts
 
-            print("Target T- Current T: ", Delta)
+            print("Target T- Current T at Sample Plate: ", Delta)
 
             if abs(dTds) <= self.dTds_limit:
                 n_dTds = n_dTds + 1
 
-    def performApproachCooling(self, T_target):
+    def performApproachCooling(self, T_targetSample):
+        """Perform an approach during cooling down. After testing, a constant value at cold plate must be reached first. Then a constant value at sample plate can be reached"""
 
         dTds = getcoolingrateExchange(1)  # Time step 1s
-        T_targetSample = T_target
-        T_target = T_target - computeColdplateTemperature(T_target)
+        T_target = T_targetSample - computeColdplateTemperature(T_targetSample)
         Ts = Atto.exchange.getTemperature()
         Delta = T_target - Ts
 
-        print("performing an approach")
         print("Target value at Cold Plate", T_target)
 
         count = 0
@@ -129,13 +118,13 @@ class attoDryControl:
                     T_set = T_target
 
             print("Target T at Cold Plate", T_set)
-            print("Coolingrate ColdPlate: ", dTds)
+            print("Cooling rate ColdPlate: ", dTds)
 
             startControlExchange(T_set)
             startControl(T_targetSample, T_targetSample)
 
             LimitColdPlate = getCoolingRateLimitColdPlate(self,T_target)
-            print("Coolingrate Limit ColdPlate: ", LimitColdPlate)
+            print("Cooling rate Limit ColdPlate: ", LimitColdPlate)
             if Ts < 296 and abs(dTds) <= LimitColdPlate:
                     n_dTds = n_dTds + 1
 
@@ -154,10 +143,10 @@ class attoDryControl:
             startControl(T_targetSample, T_targetSample)
 
             dTds_Sample = getcoolingrate(2)
-            print("Coolingrate SamplePlate: ", dTds_Sample)
+            print("Cooling rate SamplePlate: ", dTds_Sample)
 
             LimitSample = getCoolingRateLimitSample(T_targetSample, CoolingRateSamplePlate)
-            print("Coolingrate Limit SamplePlate: ", LimitSample)
+            print("Cooling rate Limit SamplePlate: ", LimitSample)
 
             if abs(dTds_Sample) <= LimitSample:
                  n_dTds = n_dTds + 1
@@ -168,9 +157,11 @@ class attoDryControl:
         """Perform an approach to the set temperature value. The transition should be smooth close to the set temperature value"""
 
         if self.ControlMode == 1: #Heating
+            print("Performing an Approach during Heating")
             performApproachHeating(T_target)
             print("Approach finished at Sample Plate")
 
         elif self.ControlMode==2: #Cooling down
+            print("Performing an Approach during Cooling Down")
             performApproachCooling(T_target)
             print("Approach finished at Sample ad Cold Plate")
