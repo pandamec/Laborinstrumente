@@ -105,8 +105,8 @@ class attoDryControl:
             Ts = self.Atto.sample.getTemperature()
             Delta = T_targetSample - Ts
 
-            print("Target T- Current T at Sample Plate: ", Delta)
-
+            print("dT at Sample Plate: ", Delta)
+            print("\n")
             if abs(dTds) <= self.dTds_limit:
                 n_dTds = n_dTds + 1
 
@@ -114,11 +114,11 @@ class attoDryControl:
         """Perform an approach during cooling down. After testing, a constant value at cold plate must be reached first. Then a constant value at sample plate can be reached"""
 
         dTds = self.getcoolingrateExchange(1)  # Time step 1s
-        T_target = T_targetSample - self.computeColdplateTemperature(T_targetSample)
-        Ts = self.Atto.exchange.getTemperature()
-        Delta = T_target - Ts
+        T_targetColdPlate = T_targetSample - self.computeColdplateTemperature(T_targetSample)
+        Tc = self.Atto.exchange.getTemperature()
+        Delta = T_targetColdPlate - Tc
 
-        print("Target value at Cold Plate", T_target)
+        #print("Target value at Cold Plate", T_targetColdPlate)
 
         count = 0
         n_dTds = 0
@@ -126,33 +126,34 @@ class attoDryControl:
         while n_dTds < 5 and count <= self.t_limitColdPlate:
 
             if 1 < -Delta <= 10:
-                    T_set = T_target + dTds * -30
+                    T_set = T_targetColdPlate + dTds * -30
 
             elif 0.01 < -Delta <= 1:
-                    T_set = T_target + dTds * -20
+                    T_set = T_targetColdPlate + dTds * -20
 
             elif -Delta <= 0.01:
-                    T_set = T_target + dTds * -10
+                    T_set = T_targetColdPlate + dTds * -10
             else:
-                    T_set = T_target
+                    T_set = T_targetColdPlate
 
             print("Target T at Cold Plate", T_set)
             print("Cooling rate ColdPlate: ", dTds)
 
             self.startControlExchange(T_set)
-            self.startControl(T_targetSample, T_targetSample)
+            self.startControl(T_targetSample)
 
-            LimitColdPlate = self.getCoolingRateLimitColdPlate(self,T_target)
+            LimitColdPlate = self.getCoolingRateLimitColdPlate(T_targetColdPlate)
             print("Cooling rate Limit ColdPlate: ", LimitColdPlate)
-            if Ts < 296 and abs(dTds) <= LimitColdPlate:
+            if Tc < 296 and abs(dTds) <= LimitColdPlate:
                     n_dTds = n_dTds + 1
 
             dTds = self.getcoolingrateExchange(2)
-            Ts = self.Atto.exchange.getTemperature()
-            Delta = T_target - Ts
-            print("Target T- Current T at Cold Plate: ", Delta)
+            Tc = self.Atto.exchange.getTemperature()
+            Delta = T_targetColdPlate - Tc
+            print("dT at Cold Plate: ", Delta)
+            print("\n")
             count = count + 1
-        self.startControlExchange(T_target)
+        self.startControlExchange(T_targetColdPlate)
 
         print("Approach finished at Cold Plate")
         n_dTds = 0
@@ -166,7 +167,7 @@ class attoDryControl:
 
             LimitSample = self.getCoolingRateLimitSample(T_targetSample)
             print("Cooling rate Limit SamplePlate: ", LimitSample)
-
+            print("\n")
             if abs(dTds_Sample) <= LimitSample:
                  n_dTds = n_dTds + 1
             count = count + 1
