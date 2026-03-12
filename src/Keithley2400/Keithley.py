@@ -1,6 +1,6 @@
 
 import time
-
+import serial
 from .PrologixGPIB import PrologixGPIB
 
 class Device(PrologixGPIB):
