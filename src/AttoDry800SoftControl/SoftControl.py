@@ -160,7 +160,7 @@ class attoDryControl:
 
         while n_dTds < 10 and count <= self.t_limitSamplePlate:
 
-            self.startControl(T_targetSample, T_targetSample)
+            self.startControl(T_targetSample)
 
             dTds_Sample = self.getcoolingrateSample(2)
             print("Cooling rate SamplePlate: ", dTds_Sample)
