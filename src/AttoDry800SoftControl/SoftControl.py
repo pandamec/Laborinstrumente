@@ -12,8 +12,12 @@ class attoDryControl:
         self.t_limitColdPlate = 0.5 * 3600   # Max time in seconds to reach a constant temperature at cold plate Changed due to the experiment on 21.10.25 from 1 to 0.5.
         self.t_limitSamplePlate = 0.75 * 3600  # Max time in seconds to reach a constant temperature at sample plate, Changed due to the experiment on 21.10.25 from 1.5 to 0.75
         self.dTds_limit=0.001                   # Max gradient of temperature w.r.t time in K/s considered to be constant at the sample plate during Heating up
-        self.CoolingRateColdPlate = [(300, 0.005),  # Added after the first measurement
-                                (15, 0.002)]
+
+        #self.CoolingRateColdPlate = [(300, 0.005)
+        # (15, 0.002)]# Added after the first measurement
+
+        self.CoolingRateColdPlate = [(300, 0.005),
+                                    (25, 0.1)] # Added on 20.03.26. Cold plate can not get the previous accuracy
 
         self.CoolingRateSamplePlate = [(300, 0.002),
                                   (15, 0.001)]
@@ -85,11 +89,19 @@ class attoDryControl:
         self.Atto.exchange.setSetPoint(T)  # Previously coldplate directly -20 wrt the set temperature. this created an oscillation on the sample temperature value after 10min
         self.Atto.exchange.startTempControl()
 
-    def startControl(self,T):
+    def startControlSamplePlate(self,T):
         """Start the temperature control"""
 
-        self.Atto.sample.startTempControl()
         self.Atto.sample.setSetPoint(T)
+        self.Atto.sample.startTempControl()
+
+
+
+    def startControl(self,T):
+        """Start the temperature control"""
+        self.Atto.sample.setSetPoint(T)
+        self.Atto.sample.startTempControl()
+
         if self.ControlMode == 2:
             self.Atto.exchange.setSetPoint(T - self.computeColdplateTemperature(T))  # Previously coldplate directly -20 wrt the set temperature. this created an oscillation on the sample temperature value after 10min
             self.Atto.exchange.startTempControl()
@@ -140,7 +152,7 @@ class attoDryControl:
             print("Cooling rate ColdPlate: ", dTds)
 
             self.startControlExchange(T_set)
-            self.startControl(T_targetSample)
+            self.startControlSamplePlate(T_targetSample)
 
             LimitColdPlate = self.getCoolingRateLimitColdPlate(T_targetColdPlate)
             print("Cooling rate Limit ColdPlate: ", LimitColdPlate)
@@ -155,8 +167,9 @@ class attoDryControl:
             count = count + 1
         self.startControlExchange(T_targetColdPlate)
 
-        print("Approach finished at Cold Plate")
+        print("Approach finished at Cold Plate during cooling down")
         n_dTds = 0
+
 
         while n_dTds < 10 and count <= self.t_limitSamplePlate:
 
@@ -172,6 +185,7 @@ class attoDryControl:
                  n_dTds = n_dTds + 1
             count = count + 1
 
+        print("Approach finished at Sample Plate during cooling down")
 
     def performApproach(self, T_target):
         """Perform an approach to the set temperature value. The transition should be smooth close to the set temperature value"""
