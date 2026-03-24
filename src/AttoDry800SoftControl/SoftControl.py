@@ -24,17 +24,32 @@ class attoDryControl:
 
     def computeColdplateTemperature(self,T):
         """Set the minimum delta required between the sample and coldplate based september 25 measurement"""
-        ## von Oyuka bis 250917 Heizung 1
-        if 75 < T <= 300:
-            delta = 10
-        elif 50 < T <= 75:
-            delta = 15
-        elif 25 < T <= 50:
-            delta = 10
-        elif 10 < T <= 25:
-            delta = 5
-        elif T <= 10:  # After Oyukasexperiment.
-            delta = T - 3
+
+        if self.AttoMode== 1:
+            ## von Oyuka bis 250917 Heizung 1
+            if 75 < T <= 300:
+                delta = 10
+            elif 50 < T <= 75:
+                delta = 15
+            elif 25 < T <= 50:
+                delta = 10
+            elif 10 < T <= 25:
+                delta = 5
+            elif T <= 10:  # After Oyukasexperiment.
+                delta = T - 3
+        else:
+
+            ## von AP3LH7 23.03 Abkühlung
+            if 75 < T <= 300:
+                delta = 30
+            elif 50 < T <= 75:
+                delta = 25
+            elif 25 < T <= 50:
+                delta = 10
+            elif 10 < T <= 25:
+                delta = 5
+            elif T <= 10:  # After Oyukasexperiment.
+                delta = T - 3
 
         return delta
 
@@ -137,22 +152,27 @@ class attoDryControl:
 
         while n_dTds < 5 and count <= self.t_limitColdPlate:
 
-            if 1 < -Delta <= 10:
-                    T_set = T_targetColdPlate + dTds * -30
+            #if 1 < -Delta <= 10: #Test 23.03
+           #         T_set = T_targetColdPlate + dTds * -30 #Test 23.03
+                    #T_set = T_targetColdPlate + dTds * -100
 
-            elif 0.01 < -Delta <= 1:
-                    T_set = T_targetColdPlate + dTds * -20
+            #elif 0.01 < -Delta <= 1:#Test 23.03
+            #        T_set = T_targetColdPlate + dTds * -20#Test 23.03
 
-            elif -Delta <= 0.01:
-                    T_set = T_targetColdPlate + dTds * -10
-            else:
-                    T_set = T_targetColdPlate
+            #elif -Delta <= 0.01:#Test 23.03
+            #        T_set = T_targetColdPlate + dTds * -10#Test 23.03
+            #else:
+            #       T_set = T_targetColdPlate #Test 23.03
 
+            T_set = T_targetColdPlate #Test 23.03
             print("Target T at Cold Plate", T_set)
             print("Cooling rate ColdPlate: ", dTds)
 
-            self.startControlExchange(T_set)
-            self.startControlSamplePlate(T_targetSample)
+            #self.startControlExchange(T_set) # Pending evaluation if it is required
+            #self.startControlSamplePlate(T_targetSample) #Test 23.03
+
+
+            self.startControl(T_targetSample) #Test 23.03
 
             LimitColdPlate = self.getCoolingRateLimitColdPlate(T_targetColdPlate)
             print("Cooling rate Limit ColdPlate: ", LimitColdPlate)
@@ -165,7 +185,7 @@ class attoDryControl:
             print("dT at Cold Plate: ", Delta)
             print("\n")
             count = count + 1
-        self.startControlExchange(T_targetColdPlate)
+        #self.startControlExchange(T_targetColdPlate) # Only the cold plate
 
         print("Approach finished at Cold Plate during cooling down")
         n_dTds = 0
@@ -173,15 +193,16 @@ class attoDryControl:
 
         while n_dTds < 10 and count <= self.t_limitSamplePlate:
 
-            self.startControl(T_targetSample)
-
+            #self.startControl(T_targetSample)
+            self.startControlSamplePlate(T_targetSample) # Only the sample plate
+            Ts = self.Atto.sample.getTemperature()
             dTds_Sample = self.getcoolingrateSample(2)
             print("Cooling rate SamplePlate: ", dTds_Sample)
 
             LimitSample = self.getCoolingRateLimitSample(T_targetSample)
             print("Cooling rate Limit SamplePlate: ", LimitSample)
             print("\n")
-            if abs(dTds_Sample) <= LimitSample:
+            if abs(dTds_Sample) <= LimitSample and Ts<T_targetSample+0.1:  #Ts lower than T target added after Test on 21.03. For bigger steps than 25 K. Cooling rate very slow but not closer to the target
                  n_dTds = n_dTds + 1
             count = count + 1
 
