@@ -4,15 +4,15 @@ import numpy as np
 class attoDryControl:
     """Indirect control of the AttoDry800 during heating and cooling down, for sample and cold plate."""
 
-    def __init__(self, Atto, ControlMode,AttoMode):
+    def __init__(self, Atto, ControlMode,AttoMode,TimeControl="Y"):
 
-        self.AttoMode=AttoMode              #1 Heating #2 Cooling
-        self.Atto= Atto                     # Class provided by Attocube
-        self.ControlMode=ControlMode        #1 Sample Plate #2 Sample Plate and Cold Plate
-        self.t_limitColdPlate = 0.5 * 3600   # Max time in seconds to reach a constant temperature at cold plate Changed due to the experiment on 21.10.25 from 1 to 0.5.
-        self.t_limitSamplePlate = 0.75 * 3600  # Max time in seconds to reach a constant temperature at sample plate, Changed due to the experiment on 21.10.25 from 1.5 to 0.75
+        self.AttoMode=AttoMode                  #1 Heating #2 Cooling
+        self.Atto= Atto                         # Class provided by Attocube
+        self.ControlMode=ControlMode            #1 Sample Plate #2 Sample Plate and Cold Plate
+        self.t_limitColdPlate = 0.5 * 3600      # Max time in seconds to reach a constant temperature at cold plate Changed due to the experiment on 21.10.25 from 1 to 0.5.
+        self.t_limitSamplePlate = 0.75 * 3600   # Max time in seconds to reach a constant temperature at sample plate, Changed due to the experiment on 21.10.25 from 1.5 to 0.75
         self.dTds_limit=0.001                   # Max gradient of temperature w.r.t time in K/s considered to be constant at the sample plate during Heating up
-
+        self.TimeControl = TimeControl          # The steps are executed according to the steptime
         #self.CoolingRateColdPlate = [(300, 0.005)
         # (15, 0.002)]# Added after the first measurement
 
@@ -28,7 +28,7 @@ class attoDryControl:
         if self.AttoMode== 1:
             ## von Oyuka bis 250917 Heizung 1
             if 75 < T <= 300:
-                delta = 10
+                delta = 20 # Changed from 10 to 20 due to the experiment on 27.03.26.
             elif 50 < T <= 75:
                 delta = 15
             elif 25 < T <= 50:
@@ -194,7 +194,8 @@ class attoDryControl:
         while n_dTds < 10 and count <= self.t_limitSamplePlate:
 
             #self.startControl(T_targetSample)
-            self.startControlSamplePlate(T_targetSample) # Only the sample plate
+            #self.startControlSamplePlate(T_targetSample) # Only the sample plate
+            self.startControl(T_targetSample) # control both because of the sudden decrease from 90 to 18 K at the cold-plate on the week of 26.03.26
             Ts = self.Atto.sample.getTemperature()
             dTds_Sample = self.getcoolingrateSample(2)
             print("Cooling rate SamplePlate: ", dTds_Sample)
@@ -213,10 +214,18 @@ class attoDryControl:
 
         if self.AttoMode == 1: #Heating
             print("Performing an Approach during Heating")
-            self.performApproachHeating(T_target)
+
+            if self.TimeControl=="Y":
+                self.startControl(T_target)
+            else:
+                self.performApproachHeating(T_target)
             print("Approach finished at Sample Plate")
 
         elif self.AttoMode==2: #Cooling down
             print("Performing an Approach during Cooling Down")
-            self.performApproachCooling(T_target)
+
+            if self.TimeControl=="Y":
+                self.startControl(T_target)
+            else:
+                self.performApproachCooling(T_target)
             print("Approach finished at Sample ad Cold Plate")
