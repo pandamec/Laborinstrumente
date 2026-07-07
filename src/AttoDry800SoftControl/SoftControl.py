@@ -134,7 +134,7 @@ class attoDryControl:
 
             print("dT at Sample Plate: ", Delta)
             print("\n")
-            if abs(dTds) <= self.dTds_limit:
+            if (abs(dTds) <= self.dTds_limit) and (abs((Ts-T_targetSample)*100/Ts)<=0.01): #Added on 26.06
                 n_dTds = n_dTds + 1
 
     def performApproachCooling(self, T_targetSample):

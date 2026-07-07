@@ -33,7 +33,15 @@ class Device(PrologixGPIB):
         #self.send_instr('UNIT[:VOLT][:DC] OHMS')
         self.send_instr('UNIT OHMS')
 
+    def set_unit_V(self): #23.06
+        """set measurements to Ohms"""
+        #self.send_instr('UNIT[:VOLT][:DC] OHMS')
+        self.send_instr('UNIT V')
 
+    def set_VoltageRange(self,value):
+        self.send_instr(f'SYST:COMM:SER:SEND "SENS:VOLT:CHAN1:RANG {value}"')
+        
+   
     def set_pulse_high(self, value):
         """set puls peak"""
         #self.send_instr('SOUR:PDEL:HIGH 1e-3')
@@ -89,7 +97,11 @@ class Device(PrologixGPIB):
         self.send_instr('SYST:COMM:SER:SEND "SENS:VOLT:DC:NPLC?"')
         return self.query('SYST:COMM:SER:ENT?')
 
-
+    
+    ### added on 03.06.
+    def set_6221_autorange(self):
+        #self.send_instr('SYST:COMM:SER:SEND "SENS:VOLT:CHAN1:RANG:AUTO ON"') # Integration time already included
+        self.send_instr('SYST:COMM:SER:SEND "SENS:VOLT:CHAN1:RANG:10"') #added on 7.6.26
 
     def set_pulse_mode(self):
         """set measurement mode to deltamode"""

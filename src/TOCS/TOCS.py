@@ -129,7 +129,7 @@ class Device:
 
             time.sleep(0.5)
 
-    def run_measurement(self):
+    def run_measurement(self,TOCS_time):
         
         try:
 
@@ -140,18 +140,20 @@ class Device:
 
             self.find_and_click(self.path_measurement)
 
-            time.sleep(180)
+            time.sleep(TOCS_time)
 
             self.find_and_click(self.path_save)
             time.sleep(2)
             
-            self.find_and_click(self.path_saveBottom)
+            #self.find_and_click(self.path_saveBottom)
+            pyautogui.press('enter')
             time.sleep(2)
             
             self.find_and_click(self.path_export)
             time.sleep(2)
 
-            self.find_and_click(self.path_saveBottom)
+            #self.find_and_click(self.path_saveBottom)
+            pyautogui.press('enter')
             time.sleep(2)
 
             self.find_and_click(self.path_msadd)
