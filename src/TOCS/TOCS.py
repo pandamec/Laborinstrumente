@@ -22,7 +22,7 @@ class Device:
         self.path_msadd=r"C:\TUC\03 Scripts\Laborinstrumente\src\TOCS\icons\msadd.png"
         self.path_mnew=r"C:\TUC\03 Scripts\Laborinstrumente\src\TOCS\icons\mnew.png"
         self.path_closeothers=r"C:\TUC\03 Scripts\Laborinstrumente\src\TOCS\icons\closeothers.png"
-
+        self.path_tocs=r"C:\TUC\03 Scripts\Laborinstrumente\src\TOCS\icons\tocs.png"
 
     def activate_window(self):
         """
@@ -129,8 +129,8 @@ class Device:
 
             time.sleep(0.5)
 
-    def run_measurement(self,TOCS_time):
-        
+    def old_run_measurement(self,TOCS_time):
+        ## Replaced on 09.07
         try:
 
             # Activate remote software window
@@ -164,7 +164,61 @@ class Device:
 
             self.find_and_click(self.path_closeothers)
             time.sleep(2)
-    
+
+        except Exception as e:
+
+            print(f"\nERROR: {e}")
+            sys.exit(1)
+
+    def run_measurement(self,TOCS_time):
+        
+        try:
+
+            # Activate remote software window
+            self.activate_window()
+            time.sleep(2)
+
+            self.find_and_click(self.path_tocs)
+            time.sleep(10)
+
+            pyautogui.hotkey('ctrl', 'o')
+            time.sleep(2)
+
+            pyautogui.press('enter')
+            time.sleep(2)
+
+            self.find_and_click(self.path_msadd)
+            time.sleep(2)
+
+            #self.find_and_rightclick(self.path_mnew)
+            #time.sleep(2)
+
+            #self.find_and_click(self.path_closeothers)
+            #time.sleep(2)
+
+            self.find_and_click(self.path_measurement)
+            time.sleep(TOCS_time)
+
+            self.find_and_click(self.path_save)
+            time.sleep(2)
+            
+            #self.find_and_click(self.path_saveBottom)
+            pyautogui.press('enter')
+            time.sleep(2)
+            
+            self.find_and_click(self.path_export)
+            time.sleep(2)
+
+            #self.find_and_click(self.path_saveBottom)
+            pyautogui.press('enter')
+            time.sleep(2)
+
+            #self.find_and_click(self.path_msadd)
+            #time.sleep(2)
+
+            pyautogui.hotkey('ctrl', 'q')
+            time.sleep(2)
+
 
         except Exception as e:
 
