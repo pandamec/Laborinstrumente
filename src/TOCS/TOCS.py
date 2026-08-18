@@ -23,6 +23,7 @@ class Device:
         self.path_mnew=r"C:\TUC\03 Scripts\Laborinstrumente\src\TOCS\icons\mnew.png"
         self.path_closeothers=r"C:\TUC\03 Scripts\Laborinstrumente\src\TOCS\icons\closeothers.png"
         self.path_tocs=r"C:\TUC\03 Scripts\Laborinstrumente\src\TOCS\icons\tocs.png"
+        self.path_error=r"C:\TUC\03 Scripts\Laborinstrumente\src\TOCS\icons\error.png"
 
     def activate_window(self):
         """
@@ -129,7 +130,7 @@ class Device:
 
             time.sleep(0.5)
 
-    def old_run_measurement(self,TOCS_time):
+    def older_run_measurement(self,TOCS_time):
         ## Replaced on 09.07
         try:
 
@@ -170,7 +171,7 @@ class Device:
             print(f"\nERROR: {e}")
             sys.exit(1)
 
-    def run_measurement(self,TOCS_time):
+    def old_run_measurement(self,TOCS_time):
         
         try:
 
@@ -219,8 +220,124 @@ class Device:
             pyautogui.hotkey('ctrl', 'q')
             time.sleep(2)
 
+        except Exception as e:
+
+            print(f"\nERROR: {e}")
+            sys.exit(1)
+
+
+    
+    def run_measurement(self,TOCS_time):
+
+        # error check implemented for 3OPMEFR402 on 03.08
+
+        try:
+
+            # Activate remote software window
+            self.activate_window()
+            time.sleep(2)
+
+            self.find_and_click(self.path_tocs)
+            time.sleep(10)
+
+            pyautogui.hotkey('ctrl', 'o')
+            time.sleep(2)
+
+            pyautogui.press('enter')
+            time.sleep(2)
+
+            self.find_and_click(self.path_msadd)
+            time.sleep(2)
+
+            self.find_and_click(self.path_measurement)
+            time.sleep(TOCS_time)
+
+            self.check(self.path_error)
+            time.sleep(2)
+
+            for i in range(5):
+
+                if self.found:
+                    print("Error in the measurement, repeating...")
+                    self.new_measurement(TOCS_time)
+                    time.sleep(2)
+
+                    self.check(self.path_error)
+                    time.sleep(2)
+
+            self.find_and_click(self.path_save)
+            time.sleep(2)
+            
+            pyautogui.press('enter')
+            time.sleep(2)
+            
+            self.find_and_click(self.path_export)
+            time.sleep(2)
+
+            pyautogui.press('enter')
+            time.sleep(2)
+
+            pyautogui.hotkey('ctrl', 'q')
+            time.sleep(2)
 
         except Exception as e:
 
             print(f"\nERROR: {e}")
             sys.exit(1)
+
+
+    def new_measurement(self,TOCS_time):
+
+        self.activate_window()
+        time.sleep(2)
+
+        pyautogui.press('enter')
+        time.sleep(2)
+
+        pyautogui.hotkey('ctrl', 'q')
+        time.sleep(2)
+
+        pyautogui.hotkey('ctrl', 'q')
+        time.sleep(2)
+
+        pyautogui.press('enter')
+        time.sleep(2)
+
+        self.find_and_click(self.path_tocs)
+        time.sleep(20)
+
+        pyautogui.hotkey('ctrl', 'o')
+        time.sleep(2)
+
+        pyautogui.press('enter')
+        time.sleep(2)
+
+        self.find_and_click(self.path_msadd)
+        time.sleep(2)
+
+        self.find_and_click(self.path_measurement)
+        time.sleep(TOCS_time)
+
+
+    def check(self,image_path):
+        """
+        Search for image on screen
+        """
+
+        print(f"Searching for error: {image_path}")
+        pyautogui.useImageNotFoundException(False)
+
+        self.found=False
+
+        found = pyautogui.locateOnScreen(
+                image_path,
+                confidence=self.CONFIDENCE
+            )
+
+        if found:
+
+            print(f"Error found")
+            self.found=found
+
+        pyautogui.useImageNotFoundException(True)
+                
