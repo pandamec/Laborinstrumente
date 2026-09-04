@@ -1,6 +1,6 @@
 ## Preamble
 import sys
-sys.path.append(r"E:\00 Script\AttodryMeasurement\src") #Folder of the library
+sys.path.append(r"C:\TUC\03 Scripts\Laborinstrumente\src") #Folder of the library
 import Monitor224
 
 ## Configuration
