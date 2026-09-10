@@ -4,7 +4,7 @@ import time
 from .PrologixGPIB import PrologixGPIB
 
 class Device(PrologixGPIB):
-    """Keithley 2400 SourceMeter"""
+    """Keithley 2450 SourceMeter"""
     def reset(self):
         self.send_instr('*RST')
         time.sleep(0.5)
@@ -45,7 +45,7 @@ class Device(PrologixGPIB):
         """Set the instrument to generate current"""
 
         self.send_instr(':SOUR:FUNC CURR')
-        self.send_instr(':SOUR:CURR:MODE FIX')
+        #self.send_instr(':SOUR:CURR:MODE FIX')
 
     def set_CurrentRange(self, value):
         """Set the current range in ampers"""
@@ -57,7 +57,7 @@ class Device(PrologixGPIB):
 
     def set_VoltageCompliance(self, value):
         """Maximum voltage limit that the instrument will allow"""
-        self.send_instr(f':SENS:VOLT:PROT {value}')
+        self.send_instr(f':SOUR:CURR:VLIM {value}')
 
 
     def set_VoltageSense(self):
