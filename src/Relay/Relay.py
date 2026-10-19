@@ -12,11 +12,14 @@ class device:
 
         self.ser.write(array.encode())
         time.sleep(1)
-        self.ser.write(array.encode())
-        time.sleep(1)
-        self.ser.write(array.encode())
-        time.sleep(1)
+        print(self.ser.readline().decode().strip())
 
+        self.ser.write(array.encode())
+        time.sleep(1)
+        print(self.ser.readline().decode().strip())
+        
+        self.ser.write(array.encode())
+        time.sleep(1)
         print(self.ser.readline().decode().strip())
       
 

@@ -1,0 +1,231 @@
+import time
+import numpy as np
+
+class attoDryControl:
+    """Indirect control of the AttoDry800 during heating and cooling down, for sample and cold plate."""
+
+    def __init__(self, Atto, ControlMode,AttoMode,TimeControl="Y"):
+
+        self.AttoMode=AttoMode                  #1 Heating #2 Cooling
+        self.Atto= Atto                         # Class provided by Attocube
+        self.ControlMode=ControlMode            #1 Sample Plate #2 Sample Plate and Cold Plate
+        self.t_limitColdPlate = 0.5 * 3600      # Max time in seconds to reach a constant temperature at cold plate Changed due to the experiment on 21.10.25 from 1 to 0.5.
+        self.t_limitSamplePlate = 0.75 * 3600   # Max time in seconds to reach a constant temperature at sample plate, Changed due to the experiment on 21.10.25 from 1.5 to 0.75
+        self.dTds_limit=0.001                   # Max gradient of temperature w.r.t time in K/s considered to be constant at the sample plate during Heating up
+        self.TimeControl = TimeControl          # The steps are executed according to the steptime
+        #self.CoolingRateColdPlate = [(300, 0.005)
+        # (15, 0.002)]# Added after the first measurement
+
+        self.CoolingRateColdPlate = [(300, 0.005),
+                                    (25, 0.1)] # Added on 20.03.26. Cold plate can not get the previous accuracy
+
+        self.CoolingRateSamplePlate = [(300, 0.002),
+                                  (15, 0.001)]
+
+    def computeColdplateTemperature(self,T):
+        """Set the minimum delta required between the sample and coldplate based september 25 measurement"""
+
+        if self.AttoMode== 1:
+            ## von Oyuka bis 250917 Heizung 1
+            if 75 < T <= 300:
+                delta = 20 # Changed from 10 to 20 due to the experiment on 27.03.26.
+            elif 50 < T <= 75:
+                delta = 15
+            elif 25 < T <= 50:
+                delta = 10
+            elif 10 < T <= 25:
+                delta = 5
+            elif T <= 10:  # After Oyukasexperiment.
+                delta = T - 3
+        else:
+
+            ## von AP3LH7 23.03 Abkühlung
+            if 75 < T <= 300:
+                delta = 30
+            elif 50 < T <= 75:
+                delta = 25
+            elif 25 < T <= 50:
+                delta = 10
+            elif 10 < T <= 25:
+                delta = 5
+            elif T <= 10:  # After Oyukasexperiment.
+                delta = T - 3
+
+        return delta
+
+    def getCoolingRateLimitColdPlate(self,T):
+
+        for i in self.CoolingRateColdPlate:
+
+            if T <= i[0]:
+                Range = i[1]
+
+        return Range
+
+    def getCoolingRateLimitSample(self,T):
+
+        for i in self.CoolingRateSamplePlate:
+
+            if T <= i[0]:
+                Range = i[1]
+
+        return Range
+
+
+    def getcoolingrateSample(self,seconds):
+        """Compute the cooling rate in a  determined delta time t"""
+        TS1 = self.Atto.sample.getTemperature()
+        time.sleep(seconds)
+        TS2 = self.Atto.sample.getTemperature()
+
+        dTds = (TS2 - TS1) / seconds
+
+        return dTds
+
+    def getcoolingrateExchange(self,seconds):
+        """Compute the cooling rate in a  determined delta time t"""
+        TS1 = self.Atto.exchange.getTemperature()
+        time.sleep(seconds)
+        TS2 = self.Atto.exchange.getTemperature()
+
+        dTds = (TS2 - TS1) / seconds
+
+        return dTds
+
+    def stopControl(self):
+        """Stop the temperature control"""
+        self.Atto.sample.stopTempControl()
+        if self.ControlMode == 2:
+            self.Atto.exchange.stopTempControl()
+
+    def startControlExchange(self,T):
+        """Start the temperature control"""
+
+        self.Atto.exchange.setSetPoint(T)  # Previously coldplate directly -20 wrt the set temperature. this created an oscillation on the sample temperature value after 10min
+        self.Atto.exchange.startTempControl()
+
+    def startControlSamplePlate(self,T):
+        """Start the temperature control"""
+
+        self.Atto.sample.setSetPoint(T)
+        self.Atto.sample.startTempControl()
+
+
+
+    def startControl(self,T):
+        """Start the temperature control"""
+        self.Atto.sample.setSetPoint(T)
+        self.Atto.sample.startTempControl()
+
+        if self.ControlMode == 2:
+            self.Atto.exchange.setSetPoint(T - self.computeColdplateTemperature(T))  # Previously coldplate directly -20 wrt the set temperature. this created an oscillation on the sample temperature value after 10min
+            self.Atto.exchange.startTempControl()
+
+
+    def performApproachHeating(self, T_targetSample):
+        """Perform an approach during heating. After testing, a constant value at sample plate includes also a constant value at cold plate"""
+        n_dTds=0
+        while n_dTds < 10:
+
+            self.startControl(T_targetSample)
+            dTds = self.getcoolingrateSample(2)
+            Ts = self.Atto.sample.getTemperature()
+            Delta = T_targetSample - Ts
+
+            print("dT at Sample Plate: ", Delta)
+            print("\n")
+            if (abs(dTds) <= self.dTds_limit) and (abs((Ts-T_targetSample)*100/Ts)<=0.01): #Added on 26.06
+                n_dTds = n_dTds + 1
+
+    def performApproachCooling(self, T_targetSample):
+        """Perform an approach during cooling down. After testing, a constant value at cold plate must be reached first. Then a constant value at sample plate can be reached"""
+
+        dTds = self.getcoolingrateExchange(1)  # Time step 1s
+        T_targetColdPlate = T_targetSample - self.computeColdplateTemperature(T_targetSample)
+        Tc = self.Atto.exchange.getTemperature()
+        Delta = T_targetColdPlate - Tc
+
+        #print("Target value at Cold Plate", T_targetColdPlate)
+
+        count = 0
+        n_dTds = 0
+
+        while n_dTds < 5 and count <= self.t_limitColdPlate:
+
+            #if 1 < -Delta <= 10: #Test 23.03
+           #         T_set = T_targetColdPlate + dTds * -30 #Test 23.03
+                    #T_set = T_targetColdPlate + dTds * -100
+
+            #elif 0.01 < -Delta <= 1:#Test 23.03
+            #        T_set = T_targetColdPlate + dTds * -20#Test 23.03
+
+            #elif -Delta <= 0.01:#Test 23.03
+            #        T_set = T_targetColdPlate + dTds * -10#Test 23.03
+            #else:
+            #       T_set = T_targetColdPlate #Test 23.03
+
+            T_set = T_targetColdPlate #Test 23.03
+            print("Target T at Cold Plate", T_set)
+            print("Cooling rate ColdPlate: ", dTds)
+
+            #self.startControlExchange(T_set) # Pending evaluation if it is required
+            #self.startControlSamplePlate(T_targetSample) #Test 23.03
+
+
+            self.startControl(T_targetSample) #Test 23.03
+
+            LimitColdPlate = self.getCoolingRateLimitColdPlate(T_targetColdPlate)
+            print("Cooling rate Limit ColdPlate: ", LimitColdPlate)
+            if Tc < 296 and abs(dTds) <= LimitColdPlate:
+                    n_dTds = n_dTds + 1
+
+            dTds = self.getcoolingrateExchange(2)
+            Tc = self.Atto.exchange.getTemperature()
+            Delta = T_targetColdPlate - Tc
+            print("dT at Cold Plate: ", Delta)
+            print("\n")
+            count = count + 1
+        #self.startControlExchange(T_targetColdPlate) # Only the cold plate
+
+        print("Approach finished at Cold Plate during cooling down")
+        n_dTds = 0
+
+
+        while n_dTds < 10 and count <= self.t_limitSamplePlate:
+
+            #self.startControl(T_targetSample)
+            #self.startControlSamplePlate(T_targetSample) # Only the sample plate
+            self.startControl(T_targetSample) # control both because of the sudden decrease from 90 to 18 K at the cold-plate on the week of 26.03.26
+            Ts = self.Atto.sample.getTemperature()
+            dTds_Sample = self.getcoolingrateSample(2)
+            print("Cooling rate SamplePlate: ", dTds_Sample)
+
+            LimitSample = self.getCoolingRateLimitSample(T_targetSample)
+            print("Cooling rate Limit SamplePlate: ", LimitSample)
+            print("\n")
+            if abs(dTds_Sample) <= LimitSample and Ts<T_targetSample+0.1:  #Ts lower than T target added after Test on 21.03. For bigger steps than 25 K. Cooling rate very slow but not closer to the target
+                 n_dTds = n_dTds + 1
+            count = count + 1
+
+        print("Approach finished at Sample Plate during cooling down")
+
+    def performApproach(self, T_target):
+        """Perform an approach to the set temperature value. The transition should be smooth close to the set temperature value"""
+
+        if self.AttoMode == 1: #Heating
+            print("Performing an Approach during Heating")
+
+            if self.TimeControl=="Y":
+                self.startControl(T_target)
+            else:
+                self.performApproachHeating(T_target)
+            print("Approach finished at Sample Plate")
+
+        elif self.AttoMode==2: #Cooling down
+            print("Performing an Approach during Cooling Down")
+
+            if self.TimeControl=="Y":
+                self.startControl(T_target)
+            else:
+                self.performApproachCooling(T_target)
+            print("Approach finished at Sample ad Cold Plate")

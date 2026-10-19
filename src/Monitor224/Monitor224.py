@@ -12,5 +12,11 @@ class device:
 
         return T
 
+    def getVoltage(self):
+        T= monitor.get_sensor_reading(self.channel)
+
+        return T
+
+
 
 

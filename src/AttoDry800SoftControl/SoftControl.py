@@ -6,12 +6,15 @@ class attoDryControl:
 
     def __init__(self, Atto, ControlMode,AttoMode,TimeControl="Y"):
 
-        self.AttoMode=AttoMode                  #1 Heating #2 Cooling
+        self.AttoMode=AttoMode                  #1 Heating #2 Cooling           Testmode=AttoMode
         self.Atto= Atto                         # Class provided by Attocube
         self.ControlMode=ControlMode            #1 Sample Plate #2 Sample Plate and Cold Plate
         self.t_limitColdPlate = 0.5 * 3600      # Max time in seconds to reach a constant temperature at cold plate Changed due to the experiment on 21.10.25 from 1 to 0.5.
         self.t_limitSamplePlate = 0.75 * 3600   # Max time in seconds to reach a constant temperature at sample plate, Changed due to the experiment on 21.10.25 from 1.5 to 0.75
         self.dTds_limit=0.001                   # Max gradient of temperature w.r.t time in K/s considered to be constant at the sample plate during Heating up
+
+        #check unit of getHeaterPower 
+        #self.dPds_limit=0.001                   # Max gradient of Heater Power w.r.t time in W/s considered to be constant at the sample plate during Heating up
         self.TimeControl = TimeControl          # The steps are executed according to the steptime
         #self.CoolingRateColdPlate = [(300, 0.005)
         # (15, 0.002)]# Added after the first measurement
@@ -73,7 +76,7 @@ class attoDryControl:
 
 
     def getcoolingrateSample(self,seconds):
-        """Compute the cooling rate in a  determined delta time t"""
+        """Compute the cooling rate in a determined delta time t"""
         TS1 = self.Atto.sample.getTemperature()
         time.sleep(seconds)
         TS2 = self.Atto.sample.getTemperature()
@@ -83,7 +86,7 @@ class attoDryControl:
         return dTds
 
     def getcoolingrateExchange(self,seconds):
-        """Compute the cooling rate in a  determined delta time t"""
+        """Compute the cooling rate in a determined delta time t"""
         TS1 = self.Atto.exchange.getTemperature()
         time.sleep(seconds)
         TS2 = self.Atto.exchange.getTemperature()
@@ -91,6 +94,26 @@ class attoDryControl:
         dTds = (TS2 - TS1) / seconds
 
         return dTds
+
+    #new block by Jeremy
+    def getPowerRateSampleHeater(self,seconds):
+        """Compute the sample heater power change rate in a determined delta time t"""
+        PS1 = self.Atto.sample.getHeaterPower()
+        time.sleep(seconds)
+        PS2 = self.Atto.sample.getHeaterPower()
+        dPds = (PS2 - PS1) / seconds
+
+        return dPds
+
+    #new block by Jeremy, 07.10.26
+    def getPowerRateExchangeHeater(self,seconds):
+        """Compute the exchange heater power change rate in a determined delta time t"""
+        PS1 = self.Atto.exchange.getHeaterPower()
+        time.sleep(seconds)
+        PS2 = self.Atto.exchange.getHeaterPower()
+        dPds = (PS2 - PS1) / seconds
+
+        return dPds
 
     def stopControl(self):
         """Stop the temperature control"""
@@ -136,6 +159,24 @@ class attoDryControl:
             print("\n")
             if (abs(dTds) <= self.dTds_limit) and (abs((Ts-T_targetSample)*100/Ts)<=0.01): #Added on 26.06
                 n_dTds = n_dTds + 1
+
+    #new block by Jeremy, 07.10.26
+    def performApproachHeatingbyPower(self, T_targetSample):
+            """Perform an approach during heating. After testing, a constant value at sample heater includes also a constant value at cold plate"""
+            n_dPds=0
+            while n_dPds < 10:
+    
+                self.startControl(T_targetSample)
+                dPds = self.getPowerRateSampleHeater(2)
+                Ts = self.Atto.sample.getTemperature()
+                Delta = T_targetSample - Ts
+    
+                print("dT at Sample Plate: ", Delta)
+                print("current dP: ", dPds)
+                print("\n")
+                if (abs(dPds) <= self.dPds_limit) and (abs((Ts-T_targetSample)*100/Ts)<=0.01): #monitor both PowerChangeRate and Temperature deviation
+                    n_dPds = n_dPds + 1
+
 
     def performApproachCooling(self, T_targetSample):
         """Perform an approach during cooling down. After testing, a constant value at cold plate must be reached first. Then a constant value at sample plate can be reached"""
@@ -229,3 +270,42 @@ class attoDryControl:
             else:
                 self.performApproachCooling(T_target)
             print("Approach finished at Sample ad Cold Plate")
+
+    #new block by Jeremy, 08.10.26
+    def performCycleApproach(self, T_target, CycleMode):
+            """Perform an approach to the set temperature value. The transition should be smooth close to the set temperature value"""
+    
+            if CycleMode == 1: #Heating
+                print("Performing an Approach during Heating")
+    
+                if self.TimeControl=="Y":
+                    self.startControl(T_target)
+                else:
+                    self.performApproachHeating(T_target)
+                print("Approach finished at Sample Plate")
+    
+            elif CycleMode ==2: #Cooling down
+                print("Performing an Approach during Cooling Down")
+    
+                if self.TimeControl=="Y":
+                    self.startControl(T_target)
+                else:
+                    self.performApproachCooling(T_target)
+                print("Approach finished at Sample ad Cold Plate")
+
+
+    #new block by Jeremy, 07.10.26
+    def performHeaterPowerApproach(self, T_target):
+            """Perform an approach to the set temperature value. The transition should be smooth close to the set temperature value"""
+    
+            if self.AttoMode == 1: #Heating
+                print("Performing an Approach during Heating")
+    
+                if self.TimeControl=="Y":
+                    self.startControl(T_target)
+                else:
+                    self.performApproachHeatingbyPower(T_target)
+                print("Approach finished at Sample Plate")
+    
+            elif self.AttoMode==2: #Cooling down
+                print("Not implemented as it seems pointless")
